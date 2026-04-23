@@ -1,0 +1,235 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AgentMemOS — Kubernetes Manifests (AWS EKS)
+#
+# Includes:
+#   - Namespace
+#   - ConfigMap
+#   - Secret (template — fill with real values or use ExternalSecrets)
+#   - Deployment with HPA triggered on gRPC queue depth (custom metric)
+#   - Services (gRPC ClusterIP, REST LoadBalancer)
+#   - HorizontalPodAutoscaler
+#   - PodDisruptionBudget
+# ─────────────────────────────────────────────────────────────────────────────
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agentmemos
+  labels:
+    app.kubernetes.io/name: agentmemos
+
+---
+# ── ConfigMap ─────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentmemos-config
+  namespace: agentmemos
+data:
+  GRPC_PORT:               "50051"
+  LOG_LEVEL:               "INFO"
+  WORKING_MEMORY_TTL:      "14400"    # 4 hours
+  COLD_CUTOFF_DAYS:        "30"
+  MIN_IMPORTANCE_HOT:      "0.35"
+  EMBED_BATCH_SIZE:        "64"
+  HDBSCAN_MIN_CLUSTER:     "3"
+  CONSOLIDATION_HOURS:     "4"
+  OPA_URL:                 "http://opa-svc.agentmemos.svc.cluster.local:8181"
+  KAFKA_WAL_TOPIC:         "agentmemos.wal"
+
+---
+# ── Secret (template) ─────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agentmemos-secrets
+  namespace: agentmemos
+type: Opaque
+stringData:
+  OPENAI_API_KEY:     "<REPLACE>"
+  PINECONE_API_KEY:   "<REPLACE>"
+  REDIS_URL:          "redis://redis-svc.agentmemos.svc.cluster.local:6379/0"
+  NEO4J_URI:          "bolt://neo4j-svc.agentmemos.svc.cluster.local:7687"
+  NEO4J_USER:         "neo4j"
+  NEO4J_PASSWORD:     "<REPLACE>"
+  POSTGRES_DSN:       "postgresql://agentmemos:<PASSWORD>@postgres-svc.agentmemos.svc.cluster.local:5432/agentmemos"
+  KAFKA_BROKERS:      "kafka-svc.agentmemos.svc.cluster.local:9092"
+
+---
+# ── Deployment ────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentmemos
+  namespace: agentmemos
+  labels:
+    app:     agentmemos
+    version: "1.0.0"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: agentmemos
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge:       1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app:     agentmemos
+        version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port:   "8000"
+        prometheus.io/path:   "/metrics"
+    spec:
+      serviceAccountName: agentmemos
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: agentmemos
+          image: <ECR_REGISTRY>/agentmemos:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: agentmemos-config
+            - secretRef:
+                name: agentmemos-secrets
+          resources:
+            requests:
+              cpu:    "250m"
+              memory: "512Mi"
+            limits:
+              cpu:    "1000m"
+              memory: "2Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds:        10
+            failureThreshold:      3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds:        5
+            failureThreshold:      3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [agentmemos]
+                topologyKey: topology.kubernetes.io/zone
+
+---
+# ── ServiceAccount ────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agentmemos
+  namespace: agentmemos
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::<ACCOUNT_ID>:role/agentmemos-irsa"
+
+---
+# ── gRPC Service (ClusterIP — internal only) ──────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentmemos-grpc
+  namespace: agentmemos
+  labels:
+    app: agentmemos
+spec:
+  selector:
+    app: agentmemos
+  ports:
+    - name: grpc
+      port:       50051
+      targetPort: 50051
+      protocol:   TCP
+  type: ClusterIP
+
+---
+# ── REST Service (LoadBalancer — admin / dashboard) ───────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentmemos-rest
+  namespace: agentmemos
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+spec:
+  selector:
+    app: agentmemos
+  ports:
+    - name: http
+      port:       80
+      targetPort: 8000
+      protocol:   TCP
+  type: LoadBalancer
+
+---
+# ── HorizontalPodAutoscaler ───────────────────────────────────────────────────
+# HPA scales on gRPC queue depth (custom metric from Prometheus adapter).
+# CPU is NOT the bottleneck — I/O to Pinecone/Neo4j/Redis is.
+# Queue depth > 50 pending RPCs per pod → scale up.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agentmemos-hpa
+  namespace: agentmemos
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agentmemos
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: grpc_server_pending_rpcs
+        target:
+          type:         AverageValue
+          averageValue: "50"
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type:               Utilization
+          averageUtilization: 70
+
+---
+# ── PodDisruptionBudget ───────────────────────────────────────────────────────
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agentmemos-pdb
+  namespace: agentmemos
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: agentmemos

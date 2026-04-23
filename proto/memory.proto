@@ -1,0 +1,209 @@
+syntax = "proto3";
+
+package agentmemos.v1;
+
+option py_generic_services = true;
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum MemoryTier {
+  TIER_UNSPECIFIED  = 0;
+  TIER_WORKING      = 1;   // Redis   — in-context scratchpad
+  TIER_EPISODIC     = 2;   // Pinecone — what happened
+  TIER_SEMANTIC     = 3;   // Neo4j   — what was learned
+  TIER_PROCEDURAL   = 4;   // PostgreSQL — how it was done
+}
+
+enum MemoryType {
+  TYPE_UNSPECIFIED  = 0;
+  TYPE_OBSERVATION  = 1;
+  TYPE_ACTION       = 2;
+  TYPE_OUTCOME      = 3;
+  TYPE_FACT         = 4;
+  TYPE_PROCEDURE    = 5;
+  TYPE_REFLECTION   = 6;
+}
+
+// ─────────────────────────────────────────────
+// Shared Messages
+// ─────────────────────────────────────────────
+
+message MemoryEntry {
+  string   id              = 1;
+  string   agent_id        = 2;
+  string   session_id      = 3;
+  string   content         = 4;
+  MemoryType type          = 5;
+  MemoryTier tier          = 6;
+  double   importance      = 7;
+  int64    created_at      = 8;
+  int64    updated_at      = 9;
+  map<string, string> metadata = 10;
+  repeated string related_ids  = 11;
+  string   version_ref     = 12;
+}
+
+message ImportanceSignals {
+  double recency_score     = 1;
+  double cross_ref_count   = 2;
+  double outcome_salience  = 3;
+  double agent_confidence  = 4;
+  double semantic_novelty  = 5;
+}
+
+message FederationPolicy {
+  string  policy_id        = 1;
+  string  owner_agent_id   = 2;
+  repeated string allowed_agents = 3;
+  repeated string allowed_teams  = 4;
+  bool    public           = 5;
+  repeated string redact_fields  = 6;
+}
+
+// ─────────────────────────────────────────────
+// Write RPC
+// ─────────────────────────────────────────────
+
+message WriteRequest {
+  string        agent_id    = 1;
+  string        session_id  = 2;
+  string        content     = 3;
+  MemoryType    type        = 4;
+  double        confidence  = 5;
+  map<string, string> metadata = 6;
+  repeated string related_ids  = 7;
+  bool          force_tier_unspecified = 8;  // let router decide
+  MemoryTier    target_tier = 9;             // override router
+}
+
+message WriteResponse {
+  string     memory_id    = 1;
+  MemoryTier routed_to    = 2;
+  double     importance   = 3;
+  bool       promoted     = 4;   // promoted to Tier 2/3
+  string     version_ref  = 5;
+  int64      written_at   = 6;
+}
+
+// ─────────────────────────────────────────────
+// Read RPC
+// ─────────────────────────────────────────────
+
+message ReadRequest {
+  string   agent_id        = 1;
+  string   session_id      = 2;
+  string   query           = 3;
+  int32    top_k           = 4;
+  repeated MemoryTier tiers = 5;   // empty = fan out to all
+  double   min_importance  = 6;
+  bool     include_federated = 7;
+  map<string, string> filters = 8;
+}
+
+message RankedMemory {
+  MemoryEntry entry        = 1;
+  double      relevance    = 2;
+  double      recency      = 3;
+  double      final_score  = 4;
+  MemoryTier  source_tier  = 5;
+  bool        from_federation = 6;
+}
+
+message ReadResponse {
+  repeated RankedMemory results   = 1;
+  int64    latency_us             = 2;
+  map<string, int32> tier_counts  = 3;   // how many from each tier
+}
+
+// ─────────────────────────────────────────────
+// Delete RPC
+// ─────────────────────────────────────────────
+
+message DeleteRequest {
+  string   agent_id    = 1;
+  string   memory_id   = 2;
+  bool     ghost       = 3;   // keep ghost entry for cold-tier detection
+}
+
+message DeleteResponse {
+  bool   deleted       = 1;
+  bool   ghost_created = 2;
+  string ghost_id      = 3;
+}
+
+// ─────────────────────────────────────────────
+// Rollback RPC
+// ─────────────────────────────────────────────
+
+message RollbackRequest {
+  string agent_id     = 1;
+  string version_ref  = 2;   // checkpoint to roll back to
+  MemoryTier tier     = 3;   // which tier to roll back
+}
+
+message RollbackResponse {
+  bool   success      = 1;
+  int32  reverted     = 2;   // number of memories reverted
+  string new_head     = 3;
+}
+
+// ─────────────────────────────────────────────
+// Federate RPC  (cross-agent memory sharing)
+// ─────────────────────────────────────────────
+
+message FederateRequest {
+  string   requesting_agent_id  = 1;
+  string   target_agent_id      = 2;
+  string   query                = 3;
+  int32    top_k                = 4;
+}
+
+message FederateResponse {
+  repeated RankedMemory results = 1;
+  bool     policy_denied        = 2;
+  string   deny_reason          = 3;
+}
+
+// ─────────────────────────────────────────────
+// Consolidation RPC  (trigger manual run)
+// ─────────────────────────────────────────────
+
+message ConsolidateRequest {
+  string agent_id  = 1;
+  bool   dry_run   = 2;
+}
+
+message ConsolidateResponse {
+  int32  clusters_found    = 1;
+  int32  nodes_created     = 2;
+  int32  episodes_archived = 3;
+  int64  storage_freed_bytes = 4;
+}
+
+// ─────────────────────────────────────────────
+// Health Check
+// ─────────────────────────────────────────────
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool   healthy           = 1;
+  map<string, bool> tiers  = 2;
+  string version           = 3;
+}
+
+// ─────────────────────────────────────────────
+// Service Definition
+// ─────────────────────────────────────────────
+
+service MemoryService {
+  rpc Write       (WriteRequest)       returns (WriteResponse);
+  rpc Read        (ReadRequest)        returns (ReadResponse);
+  rpc Delete      (DeleteRequest)      returns (DeleteResponse);
+  rpc Rollback    (RollbackRequest)    returns (RollbackResponse);
+  rpc Federate    (FederateRequest)    returns (FederateResponse);
+  rpc Consolidate (ConsolidateRequest) returns (ConsolidateResponse);
+  rpc Health      (HealthRequest)      returns (HealthResponse);
+}
