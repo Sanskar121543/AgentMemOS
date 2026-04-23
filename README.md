@@ -168,22 +168,58 @@ Measured locally in Docker using concurrent synthetic requests against the light
 *These numbers reflect local health-check performance, not full memory write/search workloads.*
 
 ---
+
 # Screenshots
 
 ## Swagger API Docs
-![Swagger](assets/screenshots/Swagger.png)
+
+<p align="center">
+  <img src="assets/screenshots/Swagger.png" width="950">
+</p>
+
+FastAPI-generated interactive REST documentation.
+
+---
 
 ## Docker Services Running
-![Docker](assets/screenshots/docker-status.png)
+
+<p align="center">
+  <img src="assets/screenshots/docker-status.png" width="950">
+</p>
+
+Healthy multi-container local environment running Redis, Kafka, Neo4j, PostgreSQL, Prometheus, Grafana, and API services.
+
+---
 
 ## Grafana Dashboard
-![Grafana](assets/screenshots/Grafana.jpeg)
+
+<p align="center">
+  <img src="assets/screenshots/Grafana.jpeg" width="950">
+</p>
+
+Metrics visualization for system health and service monitoring.
+
+---
 
 ## Neo4j Graph View
-![Neo4j](assets/screenshots/Neo4j.jpeg)
+
+<p align="center">
+  <img src="assets/screenshots/Neo4j.jpeg" width="950">
+</p>
+
+Semantic memory graph storage for concepts and relationships.
+
+---
 
 ## Benchmark Results
-![Benchmark](assets/screenshots/BenchmarkResults.jpeg)
+
+<p align="center">
+  <img src="assets/screenshots/BenchmarkResults.jpeg" width="950">
+</p>
+
+Local concurrent benchmark results for `/health` endpoint.
+
+---
 
 # API Surface
 
@@ -217,11 +253,13 @@ AgentMemOS/
 │   ├── federation/
 │   ├── eviction/
 │   └── server/
+├── assets/screenshots/
 ├── monitoring/
 ├── proto/
 ├── tests/
 ├── docker-compose.yml
 ├── Dockerfile
+├── pyproject.toml
 └── README.md
 ```
 
