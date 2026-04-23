@@ -168,6 +168,22 @@ Measured locally in Docker using concurrent synthetic requests against the light
 *These numbers reflect local health-check performance, not full memory write/search workloads.*
 
 ---
+# Screenshots
+
+## Swagger API Docs
+![Swagger](assets/screenshots/Swagger.png)
+
+## Docker Services Running
+![Docker](assets/screenshots/docker-status.png)
+
+## Grafana Dashboard
+![Grafana](assets/screenshots/Grafana.jpeg)
+
+## Neo4j Graph View
+![Neo4j](assets/screenshots/Neo4j.jpeg)
+
+## Benchmark Results
+![Benchmark](assets/screenshots/BenchmarkResults.jpeg)
 
 # API Surface
 
