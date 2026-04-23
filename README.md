@@ -174,7 +174,7 @@ Measured locally in Docker using concurrent synthetic requests against the light
 
 Watch a short walkthrough of AgentMemOS:
 
-[▶ Watch AgentMemOS Demo](assets/demo/agentmemos-demo.mp4)
+[Download / View Demo Video](assets/demo/agentmemos-demo.mp4)
 
 ---
 
