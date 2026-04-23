@@ -168,6 +168,15 @@ Measured locally in Docker using concurrent synthetic requests against the light
 *These numbers reflect local health-check performance, not full memory write/search workloads.*
 
 ---
+---
+
+# Demo Video
+
+Watch a short walkthrough of AgentMemOS:
+
+[▶ Watch AgentMemOS Demo](assets/demo/agentmemos-demo.mp4)
+
+---
 
 # Screenshots
 
