@@ -1,3 +1,4 @@
+![CI](https://github.com/Sanskar121543/AgentMemOS/actions/workflows/ci.yml/badge.svg)
 # AgentMemOS
 
 **A prototype hierarchical memory operating system for persistent LLM agents.**
