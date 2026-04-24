@@ -179,29 +179,53 @@ Local Docker smoke benchmark of lightweight infrastructure endpoints:
 
 ## Screenshots
 
-### Swagger API Docs
+## Swagger API Docs
 
-```html
-<img src="assets/screenshots/Swagger.png" width="950">
-```
+<p align="center">
+  <img src="assets/screenshots/Swagger.png" width="950">
+</p>
 
-### Docker Services Running
+Interactive FastAPI-generated REST documentation.
 
-```html
-<img src="assets/screenshots/docker-status.png" width="950">
-```
+---
 
-### Grafana Dashboard
+## Docker Services Running
 
-```html
-<img src="assets/screenshots/Grafana.png" width="950">
-```
+<p align="center">
+  <img src="assets/screenshots/docker-status.png" width="950">
+</p>
 
-### Neo4j Graph View
+Healthy multi-container environment running Redis, Kafka, Neo4j, PostgreSQL, Prometheus, Grafana, and API services.
 
-```html
-<img src="assets/screenshots/Neo4j.jpeg" width="950">
-```
+---
+
+## Grafana Dashboard
+
+<p align="center">
+  <img src="assets/screenshots/Grafana.png" width="950">
+</p>
+
+Metrics visualization for system health and operational monitoring.
+
+---
+
+## Neo4j Graph View
+
+<p align="center">
+  <img src="assets/screenshots/Neo4j.jpeg" width="950">
+</p>
+
+Semantic memory graph storing concepts and relationships.
+
+---
+
+## Benchmark Results
+
+<p align="center">
+  <img src="assets/screenshots/BenchmarkResults.jpeg" width="950">
+</p>
+
+Concurrent benchmark results for the infrastructure benchmark suite.
 
 ---
 
