@@ -1,25 +1,25 @@
 # AgentMemOS
 
-**Prototype Hierarchical Memory System for LLM Agents**
+**Prototype Hierarchical Memory Operating System for Persistent LLM Agents**
 
-AgentMemOS is a distributed memory management prototype for autonomous AI agents that organizes persistent, cross-session memory across four cognitively inspired tiers: **working**, **episodic**, **semantic**, and **procedural** memory.
+AgentMemOS is a distributed memory management prototype for autonomous AI agents that enables persistent, cross-session memory across four cognitively inspired tiers: **working**, **episodic**, **semantic**, and **procedural** memory.
 
-It is built to explore how long-running LLM agents can retain context, store prior experiences, preserve workflows, and retrieve relevant knowledge across sessions.
+It explores how long-running LLM systems can retain context, remember prior interactions, build structured knowledge, and preserve reusable workflows over time.
 
 ---
 
 # Why AgentMemOS?
 
-Most LLM applications are stateless by default. Once a conversation ends, useful context is often lost unless external memory systems are added.
+Most LLM applications are stateless by default. Once a session ends, valuable context is often lost unless an external memory layer is added.
 
-AgentMemOS explores a structured memory architecture inspired by human cognition:
+AgentMemOS investigates a structured memory architecture inspired by human cognition:
 
 * **Working Memory** → short-term active context
-* **Episodic Memory** → prior interactions and events
-* **Semantic Memory** → facts and concepts accumulated over time
-* **Procedural Memory** → workflows, tool usage, and reusable processes
+* **Episodic Memory** → prior interactions and experiences
+* **Semantic Memory** → facts, concepts, relationships
+* **Procedural Memory** → workflows, tools, reusable processes
 
-This structure helps agents maintain continuity and enables richer long-term behavior.
+This architecture helps agents maintain continuity, improve retrieval quality, and support richer long-term behavior.
 
 ---
 
@@ -53,8 +53,8 @@ Supporting Services:
 | Tier       | Backend    | Purpose                                   |
 | ---------- | ---------- | ----------------------------------------- |
 | Working    | Redis      | Fast short-term session context           |
-| Episodic   | Pinecone   | Vector retrieval over prior interactions  |
-| Semantic   | Neo4j      | Structured facts and relationships        |
+| Episodic   | Pinecone   | Vector retrieval over prior sessions      |
+| Semantic   | Neo4j      | Structured concepts and relationships     |
 | Procedural | PostgreSQL | Tool traces, workflows, versioned records |
 
 ---
@@ -63,7 +63,7 @@ Supporting Services:
 
 ## 1. Multi-Tier Memory Routing
 
-Memories can be routed to the most suitable storage tier depending on type and retrieval needs.
+Memories are routed to the most appropriate storage tier based on type, latency needs, and retrieval strategy.
 
 Examples:
 
@@ -76,23 +76,23 @@ Examples:
 
 ## 2. Background Consolidation Pipeline
 
-A scheduled consolidation process transforms short-term memories into more durable knowledge.
+A scheduled consolidation workflow transforms short-term experiences into durable long-term knowledge.
 
 Typical stages:
 
-1. Fetch recent episodic memories
+1. Retrieve recent episodic memories
 2. Cluster related memories
 3. Summarize recurring patterns
-4. Promote synthesized concepts into semantic memory
-5. Archive stale low-value entries
+4. Promote useful concepts into semantic memory
+5. Archive stale or low-value entries
 
-This helps control storage growth while improving memory organization.
+This helps control storage growth while improving organization and recall quality.
 
 ---
 
 ## 3. Importance-Based Retention
 
-Memories can be ranked using signals such as:
+Memories can be prioritized using signals such as:
 
 * Recency
 * Frequency of reuse
@@ -100,20 +100,20 @@ Memories can be ranked using signals such as:
 * Novelty
 * Successful outcomes
 
-Higher-value memories can be prioritized for retention.
+Higher-value memories can be retained longer or promoted across tiers.
 
 ---
 
 ## 4. Cross-Agent Federation
 
-Includes policy-based memory sharing primitives for multi-agent systems.
+Supports policy-based memory sharing for multi-agent systems.
 
-Supported access patterns:
+Example access models:
 
-* Public memories
+* Public memory pools
 * Team-scoped access
 * Agent allowlists
-* Field redaction
+* Field redaction rules
 
 ---
 
@@ -161,18 +161,11 @@ Measured locally in Docker using concurrent synthetic requests against the light
 | Metric          | Result        |
 | --------------- | ------------- |
 | Throughput      | 5,537 req/sec |
-| Average latency | 1.66 ms       |
-| P95 latency     | 2.23 ms       |
-| P99 latency     | 13.55 ms      |
+| Average Latency | 1.66 ms       |
+| P95 Latency     | 2.23 ms       |
+| P99 Latency     | 13.55 ms      |
 
-*These numbers reflect local health-check performance, not full memory write/search workloads.*
-
----
-# Demo Video
-
-Watch a short walkthrough of AgentMemOS:
-
-[▶ Watch AgentMemOS Demo](assets/demo/agentmemos-demo.mp4.mp4)
+*These figures reflect local health-check performance, not full write/search memory workloads.*
 
 ---
 
@@ -184,7 +177,7 @@ Watch a short walkthrough of AgentMemOS:
   <img src="assets/screenshots/Swagger.png" width="950">
 </p>
 
-FastAPI-generated interactive REST documentation.
+Interactive FastAPI-generated REST documentation.
 
 ---
 
@@ -194,17 +187,17 @@ FastAPI-generated interactive REST documentation.
   <img src="assets/screenshots/docker-status.png" width="950">
 </p>
 
-Healthy multi-container local environment running Redis, Kafka, Neo4j, PostgreSQL, Prometheus, Grafana, and API services.
+Healthy multi-container environment running Redis, Kafka, Neo4j, PostgreSQL, Prometheus, Grafana, and API services.
 
 ---
 
 ## Grafana Dashboard
 
 <p align="center">
-  <img src="assets/screenshots/Grafana.jpeg" width="950">
+  <img src="assets/screenshots/Grafana.png" width="950">
 </p>
 
-Metrics visualization for system health and service monitoring.
+Metrics visualization for system health and operational monitoring.
 
 ---
 
@@ -214,7 +207,7 @@ Metrics visualization for system health and service monitoring.
   <img src="assets/screenshots/Neo4j.jpeg" width="950">
 </p>
 
-Semantic memory graph storage for concepts and relationships.
+Semantic memory graph storing concepts and relationships.
 
 ---
 
@@ -224,13 +217,13 @@ Semantic memory graph storage for concepts and relationships.
   <img src="assets/screenshots/BenchmarkResults.jpeg" width="950">
 </p>
 
-Local concurrent benchmark results for `/health` endpoint.
+Concurrent benchmark results for the `/health` endpoint.
 
 ---
 
 # API Surface
 
-## REST
+## REST Endpoints
 
 * `GET /health`
 * `GET /metrics`
@@ -239,7 +232,7 @@ Local concurrent benchmark results for `/health` endpoint.
 * `POST /rollback`
 * `POST /policy`
 
-## gRPC
+## gRPC Operations
 
 * Write memory
 * Read memory
@@ -283,7 +276,7 @@ cd AgentMemOS
 
 ## Configure Environment
 
-Create `.env`
+Create a `.env` file:
 
 ```env
 OPENAI_API_KEY=your_key
@@ -309,11 +302,11 @@ http://localhost:8000/docs
 
 ## Personal AI Assistant
 
-Retains preferences, tasks, and recurring context.
+Retains preferences, tasks, and recurring context across sessions.
 
 ## Multi-Agent Research System
 
-Shares memory selectively with policy controls.
+Shares memory selectively using policy controls.
 
 ## Coding Agent
 
@@ -321,18 +314,18 @@ Stores bug fixes, workflows, and reusable execution traces.
 
 ## Enterprise Knowledge Assistant
 
-Builds searchable institutional memory across sessions.
+Builds searchable institutional memory over time.
 
 ---
 
 # Engineering Highlights
 
-* Built a multi-tier memory architecture across cache, vector, graph, and relational stores
-* Implemented asynchronous APIs using FastAPI + gRPC
-* Designed a consolidation workflow for long-term memory promotion
-* Added observability using Prometheus + Grafana
-* Dockerized a full local multi-service environment
-* Explored memory systems for persistent LLM agents
+* Built a multi-tier memory architecture spanning cache, vector, graph, and relational systems
+* Implemented asynchronous APIs with FastAPI + gRPC
+* Designed a memory consolidation workflow for long-term promotion
+* Added observability with Prometheus + Grafana
+* Dockerized a complete multi-service local environment
+* Explored persistent memory systems for long-running LLM agents
 
 ---
 
@@ -342,7 +335,7 @@ Builds searchable institutional memory across sessions.
 * Retrieval ranking improvements
 * Cost-aware storage routing
 * Local embedding providers
-* Fine-grained TTL and retention policies
+* Fine-grained TTL / retention policies
 
 ---
 
