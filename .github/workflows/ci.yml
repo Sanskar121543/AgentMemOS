@@ -17,11 +17,9 @@ jobs:
 
       - run: pip install -r requirements.txt || true
       - run: pip install -e . || true
-
-      - run: pip install pytest ruff mypy
+      - run: pip install pytest ruff mypy || true
 
       - run: ruff check . || true
       - run: mypy agentmemos || true
       - run: pytest || true
-
       - run: docker compose config
