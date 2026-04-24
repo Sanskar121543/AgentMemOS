@@ -1,125 +1,110 @@
 # AgentMemOS
 
-**Prototype Hierarchical Memory Operating System for Persistent LLM Agents**
+**A prototype hierarchical memory operating system for persistent LLM agents.**
 
-AgentMemOS is a distributed memory management prototype for autonomous AI agents that enables persistent, cross-session memory across four cognitively inspired tiers: **working**, **episodic**, **semantic**, and **procedural** memory.
+AgentMemOS is a distributed memory management system for autonomous AI agents. It separates the control plane from the memory data plane and organizes memory into four cognitively inspired tiers: **working**, **episodic**, **semantic**, and **procedural** memory.
 
-It explores how long-running LLM systems can retain context, remember prior interactions, build structured knowledge, and preserve reusable workflows over time.
-
----
-
-# Why AgentMemOS?
-
-Most LLM applications are stateless by default. Once a session ends, valuable context is often lost unless an external memory layer is added.
-
-AgentMemOS investigates a structured memory architecture inspired by human cognition:
-
-* **Working Memory** → short-term active context
-* **Episodic Memory** → prior interactions and experiences
-* **Semantic Memory** → facts, concepts, relationships
-* **Procedural Memory** → workflows, tools, reusable processes
-
-This architecture helps agents maintain continuity, improve retrieval quality, and support richer long-term behavior.
+Hot-path memory operations run over **gRPC (port 50051)**, while administrative and observability endpoints run over **FastAPI (port 8000)**.
 
 ---
 
-# Architecture
+## Why AgentMemOS?
+
+Most LLM systems are stateless by default. Once a session ends, valuable context is often lost.
+
+AgentMemOS explores how long-running agents can:
+
+* retain active context
+* retrieve prior interactions
+* build structured knowledge
+* preserve reusable workflows
+* support policy-controlled memory sharing
+
+---
+
+## Architecture
 
 ```text
 LLM Agent
    │
    ▼
-FastAPI / gRPC API Layer
+gRPC Memory Data Plane (50051)
+   │
+   ├── Working Memory     → Redis
+   ├── Episodic Memory    → Pinecone
+   ├── Semantic Memory    → Neo4j
+   └── Procedural Memory  → PostgreSQL
+
+Control Plane
    │
    ▼
-Memory Router
-   │
-   ├── Tier 0: Redis        (Working Memory)
-   ├── Tier 1: Pinecone     (Episodic Memory)
-   ├── Tier 2: Neo4j        (Semantic Memory)
-   └── Tier 3: PostgreSQL   (Procedural Memory)
+FastAPI Admin API (8000)
 
 Supporting Services:
-- Consolidation Pipeline
-- Metrics Exporter
-- Policy Engine
 - Kafka Write Log
+- Open Policy Agent
+- Prometheus
+- Grafana
 ```
 
 ---
 
-# Memory Tiers
+## Memory Tiers
 
-| Tier       | Backend    | Purpose                                   |
-| ---------- | ---------- | ----------------------------------------- |
-| Working    | Redis      | Fast short-term session context           |
-| Episodic   | Pinecone   | Vector retrieval over prior sessions      |
-| Semantic   | Neo4j      | Structured concepts and relationships     |
-| Procedural | PostgreSQL | Tool traces, workflows, versioned records |
+| Tier       | Backend    | Purpose                         |
+| ---------- | ---------- | ------------------------------- |
+| Working    | Redis      | Fast short-term session context |
+| Episodic   | Pinecone   | Prior interaction retrieval     |
+| Semantic   | Neo4j      | Concepts and relationships      |
+| Procedural | PostgreSQL | Workflows and reusable traces   |
 
 ---
 
-# Core Features
+## Core Features
 
-## 1. Multi-Tier Memory Routing
+### Multi-Tier Memory Routing
 
-Memories are routed to the most appropriate storage tier based on type, latency needs, and retrieval strategy.
+Memories are routed to the best storage tier depending on usage pattern, latency needs, and persistence value.
 
 Examples:
 
-* Temporary task context → Redis
+* Temporary context → Redis
 * Interaction summaries → Pinecone
-* Learned preferences → Neo4j
+* Learned facts → Neo4j
 * Reusable workflows → PostgreSQL
 
 ---
 
-## 2. Background Consolidation Pipeline
+### Background Consolidation Pipeline
 
-A scheduled consolidation workflow transforms short-term experiences into durable long-term knowledge.
+Short-term experiences can be promoted into long-term memory.
 
-Typical stages:
+Typical flow:
 
 1. Retrieve recent episodic memories
-2. Cluster related memories
+2. Cluster related entries
 3. Summarize recurring patterns
-4. Promote useful concepts into semantic memory
-5. Archive stale or low-value entries
-
-This helps control storage growth while improving organization and recall quality.
+4. Promote useful concepts to semantic memory
+5. Archive stale entries
 
 ---
 
-## 3. Importance-Based Retention
+### Policy-Based Federation
 
-Memories can be prioritized using signals such as:
+Supports controlled memory sharing across multiple agents.
 
-* Recency
-* Frequency of reuse
-* Relevance
-* Novelty
-* Successful outcomes
-
-Higher-value memories can be retained longer or promoted across tiers.
-
----
-
-## 4. Cross-Agent Federation
-
-Supports policy-based memory sharing for multi-agent systems.
-
-Example access models:
+Examples:
 
 * Public memory pools
 * Team-scoped access
-* Agent allowlists
-* Field redaction rules
+* Allowlists
+* Redacted fields
 
 ---
 
-## 5. Observability
+### Observability
 
-Integrated monitoring stack includes:
+Integrated monitoring includes:
 
 * Prometheus metrics
 * Grafana dashboards
@@ -128,23 +113,46 @@ Integrated monitoring stack includes:
 
 ---
 
-# Tech Stack
+## Interfaces
 
-## Backend
+### REST Admin API
+
+* `GET /health`
+* `GET /ready`
+* `GET /metrics`
+* `GET /agents/{agent_id}/stats`
+* `GET /agents/{agent_id}/versions`
+* `POST /consolidate`
+* `POST /rollback`
+* `POST /policy`
+
+### gRPC Memory API
+
+* Write memory
+* Read memory
+* Delete memory
+* Consolidate memory
+* Federated access checks
+
+---
+
+## Tech Stack
+
+### Backend
 
 * Python 3.11
 * FastAPI
 * gRPC
 * AsyncIO
 
-## Datastores
+### Datastores
 
 * Redis
 * Pinecone
 * Neo4j
 * PostgreSQL
 
-## Infrastructure
+### Infrastructure
 
 * Docker Compose
 * Kafka
@@ -154,95 +162,87 @@ Integrated monitoring stack includes:
 
 ---
 
-# Local Benchmark Results
+## Benchmark Snapshot
 
-Measured locally in Docker using concurrent synthetic requests against the lightweight `/health` endpoint.
+Local Docker smoke benchmark of lightweight infrastructure endpoints:
 
-| Metric          | Result        |
-| --------------- | ------------- |
+| Metric          |        Result |
+| --------------- | ------------: |
 | Throughput      | 5,537 req/sec |
-| Average Latency | 1.66 ms       |
-| P95 Latency     | 2.23 ms       |
-| P99 Latency     | 13.55 ms      |
+| Average Latency |       1.66 ms |
+| P95 Latency     |       2.23 ms |
+| P99 Latency     |      13.55 ms |
 
-*These figures reflect local health-check performance, not full write/search memory workloads.*
-
----
-
-# Screenshots
-
-## Swagger API Docs
-
-<p align="center">
-  <img src="assets/screenshots/Swagger.png" width="950">
-</p>
-
-Interactive FastAPI-generated REST documentation.
+*These reflect infra responsiveness, not full memory-path write/search workloads.*
 
 ---
 
-## Docker Services Running
+## Screenshots
 
-<p align="center">
-  <img src="assets/screenshots/docker-status.png" width="950">
-</p>
+### Swagger API Docs
 
-Healthy multi-container environment running Redis, Kafka, Neo4j, PostgreSQL, Prometheus, Grafana, and API services.
+```html
+<img src="assets/screenshots/Swagger.png" width="950">
+```
 
----
+### Docker Services Running
 
-## Grafana Dashboard
+```html
+<img src="assets/screenshots/docker-status.png" width="950">
+```
 
-<p align="center">
-  <img src="assets/screenshots/Grafana.png" width="950">
-</p>
+### Grafana Dashboard
 
-Metrics visualization for system health and operational monitoring.
+```html
+<img src="assets/screenshots/Grafana.png" width="950">
+```
 
----
+### Neo4j Graph View
 
-## Neo4j Graph View
-
-<p align="center">
-  <img src="assets/screenshots/Neo4j.jpeg" width="950">
-</p>
-
-Semantic memory graph storing concepts and relationships.
+```html
+<img src="assets/screenshots/Neo4j.jpeg" width="950">
+```
 
 ---
 
-## Benchmark Results
+## Quick Start
 
-<p align="center">
-  <img src="assets/screenshots/BenchmarkResults.jpeg" width="950">
-</p>
+### Clone Repository
 
-Concurrent benchmark results for the `/health` endpoint.
+```bash
+git clone https://github.com/Sanskar121543/AgentMemOS.git
+cd AgentMemOS
+```
+
+### Configure `.env`
+
+```env
+OPENAI_API_KEY=your_key
+PINECONE_API_KEY=your_key
+JWT_SECRET=your_secret
+```
+
+### Start Services
+
+```bash
+docker compose up -d
+```
+
+### Open Docs
+
+```text
+http://localhost:8000/docs
+```
+
+### Open Grafana
+
+```text
+http://localhost:3001
+```
 
 ---
 
-# API Surface
-
-## REST Endpoints
-
-* `GET /health`
-* `GET /metrics`
-* `GET /agents/{id}/stats`
-* `POST /consolidate`
-* `POST /rollback`
-* `POST /policy`
-
-## gRPC Operations
-
-* Write memory
-* Read memory
-* Delete memory
-* Consolidate memory
-* Federated access
-
----
-
-# Project Structure
+## Project Structure
 
 ```text
 AgentMemOS/
@@ -256,7 +256,9 @@ AgentMemOS/
 ├── assets/screenshots/
 ├── monitoring/
 ├── proto/
+├── scripts/
 ├── tests/
+├── results/
 ├── docker-compose.yml
 ├── Dockerfile
 ├── pyproject.toml
@@ -265,80 +267,48 @@ AgentMemOS/
 
 ---
 
-# Quick Start
+## Example Use Cases
 
-## Clone Repository
+### Personal AI Assistant
 
-```bash
-git clone https://github.com/Sanskar121543/AgentMemOS.git
-cd AgentMemOS
-```
+Retains preferences and recurring context across sessions.
 
-## Configure Environment
-
-Create a `.env` file:
-
-```env
-OPENAI_API_KEY=your_key
-PINECONE_API_KEY=your_key
-JWT_SECRET=your_secret
-```
-
-## Launch Services
-
-```bash
-docker compose up -d
-```
-
-## Open API Docs
-
-```text
-http://localhost:8000/docs
-```
-
----
-
-# Example Use Cases
-
-## Personal AI Assistant
-
-Retains preferences, tasks, and recurring context across sessions.
-
-## Multi-Agent Research System
+### Multi-Agent Research System
 
 Shares memory selectively using policy controls.
 
-## Coding Agent
+### Coding Agent
 
-Stores bug fixes, workflows, and reusable execution traces.
+Stores bug fixes, workflows, and reusable traces.
 
-## Enterprise Knowledge Assistant
+### Enterprise Knowledge Assistant
 
 Builds searchable institutional memory over time.
 
 ---
 
-# Engineering Highlights
+## Engineering Highlights
 
-* Built a multi-tier memory architecture spanning cache, vector, graph, and relational systems
-* Implemented asynchronous APIs with FastAPI + gRPC
-* Designed a memory consolidation workflow for long-term promotion
-* Added observability with Prometheus + Grafana
-* Dockerized a complete multi-service local environment
+* Built a multi-tier memory architecture across cache, vector, graph, and relational stores
+* Implemented asynchronous APIs using FastAPI + gRPC
+* Designed long-term memory consolidation workflows
+* Added monitoring with Prometheus + Grafana
+* Dockerized full multi-service local deployment
 * Explored persistent memory systems for long-running LLM agents
 
 ---
 
-# Future Improvements
+## Future Improvements
 
+* Real write/search benchmark suite
 * Kubernetes deployment
 * Retrieval ranking improvements
 * Cost-aware storage routing
 * Local embedding providers
-* Fine-grained TTL / retention policies
+* Fine-grained retention policies
 
 ---
 
-# License
+## License
 
 MIT
