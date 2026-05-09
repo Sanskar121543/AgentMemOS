@@ -14,3 +14,29 @@ Thanks for your interest in contributing.
 
 ```bash
 docker compose up -d
+Pull Requests
+
+Please keep PRs focused and well documented.
+
+Areas Open for Contribution
+Memory routing improvements
+Benchmarking
+Documentation
+Grafana dashboards
+Testing
+Performance optimization
+Code Style
+Follow PEP8
+Use meaningful commit messages
+Add tests where possible
+
+Commit changes.
+
+---
+
+# 3. Add Issue Templates
+
+## Create folder:
+
+```text id="i1"
+.github/ISSUE_TEMPLATE
