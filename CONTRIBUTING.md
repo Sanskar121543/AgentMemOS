@@ -29,14 +29,3 @@ Code Style
 Follow PEP8
 Use meaningful commit messages
 Add tests where possible
-
-Commit changes.
-
----
-
-# 3. Add Issue Templates
-
-## Create folder:
-
-```text id="i1"
-.github/ISSUE_TEMPLATE
