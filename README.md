@@ -37,7 +37,11 @@
 </div>
 
 ---
+## Demo
 
+<p align="center">
+  <img src="assets/demo.gif" width="950">
+</p>
 ## Benchmark Results
 
 > Local Docker smoke benchmark · infrastructure endpoints · concurrent load
