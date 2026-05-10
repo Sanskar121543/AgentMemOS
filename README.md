@@ -40,7 +40,7 @@
 ## Demo
 
 <p align="center">
-  <img src="assets/demo.gif" width="950">
+  <img src="assets/demo1.gif" width="950">
 </p>
 ## Benchmark Results
 
