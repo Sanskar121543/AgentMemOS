@@ -16,11 +16,11 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from agentmemos.core.models import GhostEntry, MemoryEntry, MemoryTier, MemoryType
-from agentmemos.core.embeddings import quantize_int8, dequantize_int8, EmbeddingService
+from agentmemos.core.embeddings import EmbeddingService
+from agentmemos.core.models import MemoryEntry, MemoryTier, MemoryType
 
 try:
     from pinecone import Pinecone, ServerlessSpec
@@ -68,7 +68,7 @@ def _pinecone_to_entry(match: Any) -> MemoryEntry:
         type=MemoryType(int(m["type"])),
         tier=MemoryTier.EPISODIC,
         importance=float(m.get("importance", 0.0)),
-        created_at=datetime.fromtimestamp(int(m["created_at"]), tz=timezone.utc),
+        created_at=datetime.fromtimestamp(int(m["created_at"]), tz=UTC),
         metadata={k: v for k, v in m.items()
                   if k not in {"agent_id", "session_id", "content", "type",
                                "tier", "importance", "created_at", "is_ghost"}},
@@ -134,7 +134,7 @@ class EpisodicMemoryTier:
                 embeddings = await self._embed.embed_batch(
                     [e.content for e in to_embed]
                 )
-                for e, emb in zip(to_embed, embeddings):
+                for e, emb in zip(to_embed, embeddings, strict=True):
                     e.embedding = emb
 
             vectors = [_entry_to_pinecone(e) for e in agent_entries]

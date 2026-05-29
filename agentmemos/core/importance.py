@@ -20,15 +20,13 @@ the defaults defined in DEFAULT_WEIGHTS.
 from __future__ import annotations
 
 import math
-import time
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Sequence
+from datetime import UTC, datetime
 
 import numpy as np
 
 from agentmemos.core.models import ImportanceSignals, MemoryEntry
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Weight Configuration
@@ -67,7 +65,7 @@ def _recency_score(created_at: datetime, half_life_hours: float = 24.0) -> float
     Exponential decay: score = exp(-λ·t)
     where λ = ln(2) / half_life and t is age in hours.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     age_hours = (now - created_at).total_seconds() / 3600.0
     lam = math.log(2) / half_life_hours
     return math.exp(-lam * age_hours)

@@ -28,15 +28,11 @@ OPA integration
 
 from __future__ import annotations
 
-import json
 import os
-import time
-from typing import Any
 
 import httpx
 
-from agentmemos.core.models import FederationPolicy, MemoryEntry, RankedMemory
-
+from agentmemos.core.models import FederationPolicy, RankedMemory
 
 OPA_URL     = os.getenv("OPA_URL", "")   # e.g. http://opa:8181
 OPA_POLICY  = os.getenv("OPA_POLICY_PATH", "agentmemos/federation/allow")

@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from datetime import datetime, timezone
 from typing import Any
 
 from agentmemos.core.models import MemoryEntry, MemoryTier, MemoryType
@@ -174,10 +173,9 @@ class ProceduralMemoryTier:
         content_hash = hashlib.sha256(entry.content.encode()).hexdigest()
         snapshot = json.loads(entry.model_dump_json(exclude={"embedding"}))
 
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """
+        async with self.pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                """
                     INSERT INTO memory_entries
                         (id, agent_id, session_id, content, type, tier,
                          importance, metadata, related_ids, version_ref,
@@ -190,32 +188,32 @@ class ProceduralMemoryTier:
                         updated_at  = EXCLUDED.updated_at,
                         version_ref = EXCLUDED.version_ref
                     """,
-                    entry.id,
-                    entry.agent_id,
-                    entry.session_id,
-                    entry.content,
-                    entry.type.value,
-                    entry.tier.value,
-                    entry.importance,
-                    json.dumps(entry.metadata),
-                    json.dumps(entry.related_ids),
-                    version_ref,
-                    entry.created_at,
-                    entry.updated_at,
-                )
-                await conn.execute(
-                    """
+                entry.id,
+                entry.agent_id,
+                entry.session_id,
+                entry.content,
+                entry.type.value,
+                entry.tier.value,
+                entry.importance,
+                json.dumps(entry.metadata),
+                json.dumps(entry.related_ids),
+                version_ref,
+                entry.created_at,
+                entry.updated_at,
+            )
+            await conn.execute(
+                """
                     INSERT INTO memory_versions
                         (version_ref, agent_id, memory_id, tier, content_hash, snapshot)
                     VALUES ($1,$2,$3,$4,$5,$6)
                     """,
-                    version_ref,
-                    entry.agent_id,
-                    entry.id,
-                    entry.tier.value,
-                    content_hash,
-                    json.dumps(snapshot),
-                )
+                version_ref,
+                entry.agent_id,
+                entry.id,
+                entry.tier.value,
+                content_hash,
+                json.dumps(snapshot),
+            )
 
         return version_ref
 

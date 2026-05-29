@@ -14,8 +14,7 @@ import asyncio
 import hashlib
 import os
 import struct
-from functools import lru_cache
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -164,7 +163,9 @@ class EmbeddingService:
             input=texts,
             encoding_format="float",
         )
-        return [item.embedding for item in response.data]
+        # Preserve input order: OpenAI returns data sorted by `index`.
+        ordered = sorted(response.data, key=lambda d: d.index)
+        return [list(item.embedding) for item in ordered]
 
     async def _local_embed(self, texts: list[str]) -> list[list[float]]:
         assert self._local is not None

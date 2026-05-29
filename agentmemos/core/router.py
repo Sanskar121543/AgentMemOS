@@ -22,16 +22,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Sequence
 
 from agentmemos.core.models import (
     MemoryTier,
     MemoryType,
-    RouterIntent,
     ReadRequest,
+    RouterIntent,
     WriteRequest,
 )
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Heuristic rule-sets

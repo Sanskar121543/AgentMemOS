@@ -1,0 +1,6 @@
+{
+  "agent_id": "demo-agent",
+  "session_id": "demo-session",
+  "content": "User likes low latency distributed systems",
+  "type": "TYPE_FACT"
+}

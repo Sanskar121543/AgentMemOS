@@ -18,16 +18,14 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query, Path
+from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
 from agentmemos.core.models import FederationPolicy, MemoryTier
 from agentmemos.server.grpc_server import MemoryServicer, build_servicer
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # App
@@ -179,8 +177,8 @@ async def list_versions(
     if tier:
         try:
             tier_enum = MemoryTier[tier.upper()]
-        except KeyError:
-            raise HTTPException(400, f"Unknown tier: {tier}")
+        except KeyError as err:
+            raise HTTPException(400, f"Unknown tier: {tier}") from err
 
     versions = await svc._procedural.list_versions(agent_id, tier_enum, limit)
     semantic_versions = await svc._semantic.list_versions(agent_id, limit)
@@ -205,8 +203,8 @@ async def rollback(req: RollbackRequest) -> dict:
     svc = get_servicer()
     try:
         tier = MemoryTier[req.tier.upper()]
-    except KeyError:
-        raise HTTPException(400, f"Unknown tier: {req.tier}")
+    except KeyError as err:
+        raise HTTPException(400, f"Unknown tier: {req.tier}") from err
     result = await svc.rollback(req.agent_id, req.version_ref, tier)
     _counters["rollbacks"] += 1
     return result

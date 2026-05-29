@@ -9,12 +9,11 @@ converted to/from these at the gRPC boundary only.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import IntEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Enums
@@ -83,8 +82,8 @@ class MemoryEntry(BaseModel):
     tier:        MemoryTier
     importance:  float = Field(default=0.0, ge=0.0, le=1.0)
     signals:     ImportanceSignals | None = None
-    created_at:  datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at:  datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at:  datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at:  datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata:    dict[str, Any] = Field(default_factory=dict)
     related_ids: list[str] = Field(default_factory=list)
     version_ref: str | None = None
@@ -130,7 +129,7 @@ class RankedMemory(BaseModel):
         from_federation: bool = False,
         relevance_weight: float = 0.6,
         recency_weight:   float = 0.4,
-    ) -> "RankedMemory":
+    ) -> RankedMemory:
         final = relevance_weight * relevance + recency_weight * recency
         return cls(
             entry=entry,
@@ -163,7 +162,7 @@ class WriteResponse(BaseModel):
     importance:  float
     promoted:    bool = False     # promoted to Tier 2 or 3
     version_ref: str | None = None
-    written_at:  datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    written_at:  datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ReadRequest(BaseModel):
@@ -194,7 +193,7 @@ class FederationPolicy(BaseModel):
     allowed_teams:  list[str] = Field(default_factory=list)
     public:         bool = False
     redact_fields:  list[str] = Field(default_factory=list)
-    created_at:     datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at:     datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -207,7 +206,7 @@ class ConsolidationResult(BaseModel):
     nodes_created:        int
     episodes_archived:    int
     storage_freed_bytes:  int
-    ran_at:               datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    ran_at:               datetime = Field(default_factory=lambda: datetime.now(UTC))
     duration_seconds:     float
 
 
@@ -221,5 +220,5 @@ class GhostEntry(BaseModel):
     agent_id:       str
     content_hash:   str   # SHA-256 of evicted content — no PII
     cold_path:      str   # s3://bucket/key
-    evicted_at:     datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    evicted_at:     datetime = Field(default_factory=lambda: datetime.now(UTC))
     tier:           MemoryTier

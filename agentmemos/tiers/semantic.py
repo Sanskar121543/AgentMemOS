@@ -27,15 +27,14 @@ from __future__ import annotations
 
 import hashlib
 import os
-import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from agentmemos.core.models import MemoryEntry, MemoryTier, MemoryType
 
 try:
-    from neo4j import AsyncGraphDatabase, AsyncDriver
+    from neo4j import AsyncDriver, AsyncGraphDatabase
     _NEO4J_AVAILABLE = True
 except ImportError:
     _NEO4J_AVAILABLE = False
@@ -99,7 +98,7 @@ class SemanticMemoryTier:
         Returns the version_ref.
         """
         version_ref = f"v:{uuid.uuid4()}"
-        now_ts = int(datetime.now(timezone.utc).timestamp())
+        now_ts = int(datetime.now(UTC).timestamp())
 
         async with self.driver.session() as session:
             # Ensure Agent node exists
@@ -345,7 +344,7 @@ class SemanticMemoryTier:
         Returns the new concept's ID.
         """
         concept_id = f"consolidated:{cluster_id}"
-        now_ts = int(datetime.now(timezone.utc).timestamp())
+        now_ts = int(datetime.now(UTC).timestamp())
 
         async with self.driver.session() as session:
             await session.run(
@@ -436,5 +435,5 @@ class SemanticMemoryTier:
             type=mtype,
             tier=MemoryTier.SEMANTIC,
             importance=float(node.get("importance", 0.0)),
-            created_at=datetime.fromtimestamp(created_ts, tz=timezone.utc),
+            created_at=datetime.fromtimestamp(created_ts, tz=UTC),
         )

@@ -14,15 +14,12 @@ Properties
 
 from __future__ import annotations
 
-import json
 import os
 import time
-from typing import AsyncIterator
 
 import redis.asyncio as aioredis
 
 from agentmemos.core.models import GhostEntry, MemoryEntry, MemoryTier
-
 
 REDIS_URL          = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 SESSION_TTL_SECS   = int(os.getenv("WORKING_MEMORY_TTL", str(4 * 3600)))   # 4 h

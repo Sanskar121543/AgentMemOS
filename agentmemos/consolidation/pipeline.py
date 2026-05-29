@@ -25,16 +25,14 @@ Why HDBSCAN?
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import time
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
 
 import numpy as np
 
-from agentmemos.core.models import ConsolidationResult, MemoryEntry, MemoryTier
 from agentmemos.core.importance import ImportanceScorer
+from agentmemos.core.models import ConsolidationResult, MemoryEntry
 from agentmemos.tiers.episodic import EpisodicMemoryTier
 from agentmemos.tiers.semantic import SemanticMemoryTier
 

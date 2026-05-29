@@ -58,7 +58,7 @@ from agentmemos.federation.policy import FederationPolicyEngine, PolicyStore
 from agentmemos.eviction.semantic_lru import SemanticLRUCache
 
 # Generated proto stubs (after running protoc)
-# from agentmemos.proto import memory_pb2, memory_pb2_grpc
+from proto import memory_pb2, memory_pb2_grpc
 
 logger = logging.getLogger(__name__)
 
@@ -394,7 +394,27 @@ class MemoryServicer:
 # ─────────────────────────────────────────────────────────────────────────────
 # Server factory
 # ─────────────────────────────────────────────────────────────────────────────
+class GrpcMemoryServicer(memory_pb2_grpc.MemoryServiceServicer):
 
+    def __init__(self, core):
+        self.core = core
+
+    async def Write(self, request, context):
+        result = await self.core.write(request)
+        return memory_pb2.WriteResponse(
+            memory_id=result.memory_id,
+            routed_to=str(result.routed_to),
+            importance=result.importance,
+            promoted=result.promoted,
+            version_ref=result.version_ref or "",
+        )
+
+    async def Health(self, request, context):
+        result = await self.core.health()
+        return memory_pb2.HealthResponse(
+            healthy=result["healthy"],
+            version=result["version"],
+        )
 async def build_servicer() -> MemoryServicer:
     embed     = await get_embedding_service()
     scorer    = ImportanceScorer()
@@ -444,9 +464,9 @@ async def serve() -> None:
             ("grpc.keepalive_permit_without_calls", True),
         ]
     )
-    # memory_pb2_grpc.add_MemoryServiceServicer_to_server(
-    #     GrpcMemoryServicer(servicer), server
-    # )
+    memory_pb2_grpc.add_MemoryServiceServicer_to_server(
+        GrpcMemoryServicer(servicer), server
+    )
     server.add_insecure_port(f"[::]:{GRPC_PORT}")
     await server.start()
     logger.info(f"AgentMemOS gRPC server listening on :{GRPC_PORT}")

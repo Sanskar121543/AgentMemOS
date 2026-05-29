@@ -31,10 +31,8 @@ import hashlib
 import math
 import time
 from dataclasses import dataclass
-from typing import Sequence
 
-from agentmemos.core.models import GhostEntry, MemoryEntry, MemoryTier
-
+from agentmemos.core.models import GhostEntry, MemoryEntry
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Scoring
