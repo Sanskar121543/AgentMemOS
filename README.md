@@ -1,5 +1,4 @@
 <div align="center">
-
 <br/>
 
 ```
@@ -12,12 +11,13 @@
 ```
 
 ### Hierarchical Memory Operating System for Persistent LLM Agents
-
 *Working memory · Episodic recall · Semantic graphs · Procedural traces · Policy-gated federation*
 
 <br/>
 
 [![CI](https://github.com/Sanskar121543/AgentMemOS/actions/workflows/ci.yml/badge.svg)](https://github.com/Sanskar121543/AgentMemOS/actions)
+[![Tests](https://img.shields.io/badge/tests-100_passing-2ea44f?style=flat-square&logo=pytest&logoColor=white)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-58%25-yellow?style=flat-square)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Admin_API-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![gRPC](https://img.shields.io/badge/gRPC-Data_Plane-244c5a?style=flat-square&logo=grpc&logoColor=white)](https://grpc.io)
@@ -33,15 +33,16 @@
 > AgentMemOS gives them a brain that persists.
 
 <br/>
-
 </div>
 
 ---
+
 ## Demo
 
 <p align="center">
   <img src="assets/demo 1.gif" width="950">
 </p>
+
 ## Benchmark Results
 
 > Local Docker smoke benchmark · infrastructure endpoints · concurrent load
@@ -118,6 +119,28 @@ AgentMemOS solves each with the right tool — and routes between them automatic
 
 ---
 
+## How a Write Travels Through the System
+
+Every write is embedded, scored, and routed automatically — the caller never picks a tier.
+
+```
+write(content)
+     │
+     ▼
+ 1. Embed          → OpenAI / local model, int8-quantized (4× smaller)
+ 2. Score          → 5-signal ImportanceScorer (recency, cross-refs,
+     │                outcome salience, confidence, semantic novelty)
+ 3. Route          → MemoryRouter blends heuristics + importance
+     │                to pick Working / Episodic / Semantic / Procedural
+ 4. WAL            → Kafka write-ahead log (durable, replayable)
+ 5. Persist        → target tier, with promotion if score clears threshold
+```
+
+Reads fan out across the routed tiers **in parallel**, fuse results by
+relevance + recency, deduplicate by id, and return the top-k.
+
+---
+
 ## Memory Tiers
 
 ### Working Memory — Redis
@@ -137,14 +160,13 @@ Structured workflow traces and reusable task templates. When an agent solves a p
 ## Core Features
 
 ### Background Consolidation Pipeline
-
 Experiences don't stay in episodic memory forever — they get promoted into structured knowledge.
 
 ```
 Recent episodic memories
         │
         ▼
-   Cluster related entries
+   Cluster related entries  (HDBSCAN)
         │
         ▼
    Summarize recurring patterns
@@ -156,11 +178,17 @@ Recent episodic memories
    Archive stale entries
 ```
 
-Trigger manually via `POST /consolidate` or schedule via Airflow.
+Trigger manually via `POST /consolidate` or schedule it.
+
+### Semantic-LRU Eviction with Ghost Entries
+Eviction isn't plain LRU — entries are scored on recency **and** semantic
+centrality (graph in-degree). Low-scoring entries are evicted and leave a
+**ghost tombstone** behind, so the next time the agent looks for that memory
+it knows the data exists in cold storage and can trigger a prefetch — a
+cache-miss signal borrowed from CPU victim caches.
 
 ### Policy-Based Memory Federation
-
-Multiple agents sharing memory without sharing everything. Open Policy Agent enforces boundaries.
+Multiple agents sharing memory without sharing everything. Open Policy Agent (Rego) enforces boundaries, with a local evaluator fallback that mirrors the same rules.
 
 | Policy Mode | Use Case |
 |------------|----------|
@@ -177,6 +205,41 @@ Multiple agents sharing memory without sharing everything. Open Policy Agent enf
 | **FastAPI** | 8000 | Control plane — admin, health, policy, metrics |
 
 Operations that need speed use gRPC. Operations that need visibility use REST.
+
+---
+
+## Testing & Quality
+
+The suite runs **fully offline** — every storage tier (Redis, Pinecone, Neo4j,
+PostgreSQL, Kafka) is replaced by faithful in-memory fakes, so the entire gRPC
+servicer and REST API can be exercised end-to-end in CI with **zero backend
+infrastructure**.
+
+```
+100 passing · property-based + concurrency + contract tests · CI-gated (ruff + pytest-cov)
+```
+
+| Suite | What it verifies |
+|-------|------------------|
+| `test_core.py` | Router, importance scorer, domain models |
+| `test_eviction_federation.py` | Semantic-LRU eviction, ghost entries, OPA policy logic |
+| `test_servicer_flow.py` | Write→route→promote pipeline, parallel read fan-out, dedup, WAL |
+| `test_rest_api.py` | Admin endpoints, error paths, Prometheus exposition |
+| `test_property_based.py` | Hypothesis invariants — score bounds, monotonic decay, router totality |
+| `test_concurrency.py` | LRU capacity under churn, parallel-write id safety |
+| `test_proto_contract.py` | Generated gRPC stubs stay in sync with `memory.proto` |
+| `test_health.py` / `test_memory_pipeline.py` | Liveness + request-pipeline smoke tests |
+
+```bash
+# Run everything with coverage
+pytest tests/ --cov=agentmemos --cov-report=term-missing
+
+# Fast path (no coverage)
+./scripts/run_tests.sh --fast
+```
+
+Continuous integration ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs
+ruff lint, the full suite, and a coverage gate on every push and pull request.
 
 ---
 
@@ -215,20 +278,21 @@ Operations that need speed use gRPC. Operations that need visibility use REST.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/health` | Liveness check |
+| `GET` | `/health` | Liveness check (fails closed if any tier is down) |
 | `GET` | `/ready` | Readiness check |
 | `GET` | `/metrics` | Prometheus scrape endpoint |
 | `GET` | `/agents/{agent_id}/stats` | Per-agent memory statistics |
 | `GET` | `/agents/{agent_id}/versions` | Memory version history |
 | `POST` | `/consolidate` | Trigger episodic → semantic promotion |
 | `POST` | `/rollback` | Revert memory to a prior version |
-| `POST` | `/policy` | Update federation policy rules |
+| `POST` | `/policy` | Register / update federation policy rules |
+| `GET` | `/policy/{agent_id}` | Fetch an agent's federation policy |
 
 ### gRPC — Data Plane `:50051`
 
-`WriteMemory` · `ReadMemory` · `DeleteMemory` · `ConsolidateMemory` · `FederatedCheck`
+`Write` · `Read` · `Delete` · `Consolidate` · `Health`
 
-See [`proto/`](proto/) for full schema definitions.
+See [`proto/memory.proto`](proto/memory.proto) for full schema definitions.
 
 ---
 
@@ -253,6 +317,13 @@ open http://localhost:3001        # Grafana
 
 All services — Redis, Kafka, Neo4j, PostgreSQL, Pinecone proxy, Prometheus, Grafana, OPA — start via a single Compose file.
 
+**Run the tests (no Docker required):**
+
+```bash
+pip install -e ".[dev]"
+pytest tests/
+```
+
 ---
 
 ## Tech Stack
@@ -265,8 +336,10 @@ All services — Redis, Kafka, Neo4j, PostgreSQL, Pinecone proxy, Prometheus, Gr
 | **Semantic Memory** | Neo4j |
 | **Procedural Memory** | PostgreSQL |
 | **Write Log** | Apache Kafka |
-| **Access Control** | Open Policy Agent |
-| **Observability** | Prometheus · Grafana |
+| **Access Control** | Open Policy Agent (Rego) |
+| **Observability** | Prometheus · Grafana · OpenTelemetry |
+| **Testing** | pytest · pytest-asyncio · Hypothesis · pytest-cov |
+| **CI / Quality** | GitHub Actions · ruff · coverage gate |
 | **Infra** | Docker Compose · Kubernetes-ready |
 
 ---
@@ -276,18 +349,21 @@ All services — Redis, Kafka, Neo4j, PostgreSQL, Pinecone proxy, Prometheus, Gr
 ```
 AgentMemOS/
 ├── agentmemos/
-│   ├── core/           # Memory router and tier dispatch
+│   ├── core/           # Memory router, importance scorer, embeddings, models
 │   ├── tiers/          # Redis, Pinecone, Neo4j, PostgreSQL adapters
-│   ├── consolidation/  # Episodic → semantic promotion pipeline
-│   ├── federation/     # OPA policy enforcement
-│   ├── eviction/       # TTL and retention logic
+│   ├── consolidation/  # Episodic → semantic promotion pipeline (HDBSCAN)
+│   ├── federation/     # OPA / Rego policy enforcement
+│   ├── eviction/       # Semantic-LRU + ghost-entry retention logic
 │   └── server/         # gRPC server + FastAPI app
-├── proto/              # gRPC service definitions
+├── proto/              # gRPC service definitions + generated stubs
 ├── monitoring/         # Prometheus config + Grafana dashboards
-├── scripts/            # Setup and seed scripts
-├── tests/              # Test suite
+├── opa/                # Rego federation policies
+├── k8s/                # Kubernetes deployment manifest
+├── scripts/            # Test runner + benchmark scripts
+├── tests/              # 100-test offline suite (unit · property · concurrency · contract)
 ├── results/            # Benchmark output
 ├── assets/screenshots/
+├── .github/workflows/  # CI pipeline
 ├── docker-compose.yml
 └── pyproject.toml
 ```
@@ -309,7 +385,7 @@ AgentMemOS/
 ## Roadmap
 
 - [ ] Full memory-path write/search benchmark suite
-- [ ] Kubernetes deployment manifests
+- [ ] Raise coverage past the tier-adapter integration layer (live-backend tests)
 - [ ] Retrieval ranking and re-ranking improvements
 - [ ] Cost-aware storage tier routing
 - [ ] Local embedding providers (no Pinecone dependency)
