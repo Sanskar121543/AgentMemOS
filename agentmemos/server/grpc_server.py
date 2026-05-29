@@ -29,33 +29,30 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
 from typing import Any
 
 import grpc
 import grpc.aio
 
+from agentmemos.consolidation.pipeline import ConsolidationPipeline
 from agentmemos.core.embeddings import EmbeddingService, get_embedding_service
-from agentmemos.core.importance import ImportanceScorer, DEFAULT_WEIGHTS
+from agentmemos.core.importance import ImportanceScorer
 from agentmemos.core.models import (
     MemoryEntry,
     MemoryTier,
-    MemoryType,
+    RankedMemory,
     ReadRequest,
     ReadResponse,
-    RankedMemory,
     WriteRequest,
     WriteResponse,
-    FederationPolicy,
 )
 from agentmemos.core.router import MemoryRouter
-from agentmemos.tiers.working    import WorkingMemoryTier
-from agentmemos.tiers.episodic   import EpisodicMemoryTier
-from agentmemos.tiers.semantic   import SemanticMemoryTier
-from agentmemos.tiers.procedural import ProceduralMemoryTier
-from agentmemos.consolidation.pipeline import ConsolidationPipeline
-from agentmemos.federation.policy import FederationPolicyEngine, PolicyStore
 from agentmemos.eviction.semantic_lru import SemanticLRUCache
+from agentmemos.federation.policy import FederationPolicyEngine, PolicyStore
+from agentmemos.tiers.episodic import EpisodicMemoryTier
+from agentmemos.tiers.procedural import ProceduralMemoryTier
+from agentmemos.tiers.semantic import SemanticMemoryTier
+from agentmemos.tiers.working import WorkingMemoryTier
 
 # Generated proto stubs (after running protoc)
 from proto import memory_pb2, memory_pb2_grpc
@@ -142,7 +139,6 @@ class MemoryServicer:
     # ── Write ─────────────────────────────────────────────────────────────────
 
     async def write(self, request: WriteRequest) -> WriteResponse:
-        t0 = time.monotonic()
 
         # 1. Embed
         embedding = await self._embed.embed(request.content)
